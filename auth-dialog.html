@@ -36,36 +36,55 @@
     <p id="message">Please wait while we complete the login.</p>
   </div>
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const code   = params.get("code");
-    const stateP = params.get("state");
-    const error  = params.get("error");
-    const desc   = params.get("error_description");
+    var params = new URLSearchParams(window.location.search);
+    var code   = params.get("code");
+    var stateP = params.get("state");
+    var error  = params.get("error");
+    var desc   = params.get("error_description");
 
     function showOk(msg) {
-      document.getElementById("icon").textContent    = "✅";
+      document.getElementById("icon").textContent    = "\u2705";
       document.getElementById("title").textContent   = "Authorised!";
       document.getElementById("spinner").style.display = "none";
       document.getElementById("message").textContent = msg;
     }
+
     function showErr(msg) {
-      document.getElementById("icon").textContent    = "❌";
+      document.getElementById("icon").textContent    = "\u274C";
       document.getElementById("title").textContent   = "Login failed";
       document.getElementById("spinner").style.display = "none";
       document.getElementById("message").textContent = msg;
     }
 
-    Office.onReady(function() {
-      if (error) {
-        showErr(desc || error);
-        Office.context.ui.messageParent(JSON.stringify({ type: "error", message: desc || error }));
-      } else if (code) {
-        showOk("You can return to Excel now.");
-        Office.context.ui.messageParent(JSON.stringify({ type: "code", code: code, state: stateP }));
-      } else {
-        showErr("Unexpected page state. Please try connecting again.");
-        Office.context.ui.messageParent(JSON.stringify({ type: "error", message: "No code received." }));
+    // Send message with retry logic — fixes timing race condition where
+    // the Office.js message channel is not fully ready when the page loads.
+    // Retries up to 5 times with 500ms between each attempt.
+    function sendMessage(payload, attempt) {
+      if (!attempt) attempt = 1;
+      try {
+        Office.context.ui.messageParent(JSON.stringify(payload));
+      } catch(e) {
+        if (attempt < 5) {
+          setTimeout(function() { sendMessage(payload, attempt + 1); }, 500);
+        }
       }
+    }
+
+    Office.onReady(function() {
+      // 800ms delay ensures the message channel is established
+      // before we attempt to send the auth code back to the task pane
+      setTimeout(function() {
+        if (error) {
+          showErr(desc || error);
+          sendMessage({ type: "error", message: desc || error });
+        } else if (code) {
+          showOk("You can return to Excel now.");
+          sendMessage({ type: "code", code: code, state: stateP });
+        } else {
+          showErr("Unexpected page state. Please try connecting again.");
+          sendMessage({ type: "error", message: "No code received." });
+        }
+      }, 800);
     });
   </script>
 </body>
