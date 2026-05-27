@@ -1,51 +1,89 @@
 /*
   netlify/functions/token.js
-  Exchanges the OAuth auth code for an access token.
-  Runs server-side on Netlify to bypass CORS restrictions on Xero's token endpoint.
-  Client credentials stay in Netlify environment variables — never sent to browser.
+  Exchanges the OAuth auth code for a Xero access token.
+  Uses Node's built-in https module — no external dependencies needed.
 */
 
+const https = require("https");
+
+// Helper: make an HTTPS POST request and return parsed JSON
+function httpsPost(hostname, path, headers, body) {
+  return new Promise((resolve, reject) => {
+    const options = {
+      hostname: hostname,
+      path: path,
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Length": Buffer.byteLength(body)
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = "";
+      res.on("data", chunk => data += chunk);
+      res.on("end", () => {
+        try {
+          resolve({ status: res.statusCode, body: JSON.parse(data) });
+        } catch(e) {
+          resolve({ status: res.statusCode, body: data });
+        }
+      });
+    });
+
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 exports.handler = async function(event) {
-  // CORS headers
-  const headers = {
+
+  // CORS headers — allow requests from any origin (required for Excel add-in)
+  const cors = {
     "Access-Control-Allow-Origin":  "*",
     "Access-Control-Allow-Headers": "Content-Type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Content-Type": "application/json"
   };
 
-  // Handle CORS preflight
+  // Handle CORS preflight request
   if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 204, headers, body: "" };
+    return { statusCode: 204, headers: cors, body: "" };
   }
 
+  // Only allow POST
   if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers, body: JSON.stringify({ error: "Method not allowed" }) };
+    return { statusCode: 405, headers: cors, body: JSON.stringify({ error: "Method not allowed" }) };
   }
 
   try {
+    // Parse request body
     const body = JSON.parse(event.body || "{}");
     const { code, verifier, redirect_uri } = body;
 
     if (!code || !verifier || !redirect_uri) {
       return {
-        statusCode: 400, headers,
-        body: JSON.stringify({ error: "Missing required fields: code, verifier, redirect_uri" })
+        statusCode: 400, headers: cors,
+        body: JSON.stringify({ error: "Missing: code, verifier, or redirect_uri" })
       };
     }
 
+    // Get credentials from Netlify environment variables
     const clientId     = process.env.XERO_CLIENT_ID;
     const clientSecret = process.env.XERO_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
       return {
-        statusCode: 500, headers,
-        body: JSON.stringify({ error: "Server missing XERO_CLIENT_ID or XERO_CLIENT_SECRET environment variables." })
+        statusCode: 500, headers: cors,
+        body: JSON.stringify({ error: "Missing XERO_CLIENT_ID or XERO_CLIENT_SECRET in Netlify environment variables" })
       };
     }
 
+    // Build Basic Auth header
     const basicAuth = Buffer.from(clientId + ":" + clientSecret).toString("base64");
 
+    // Build form body for Xero token request
     const formBody = new URLSearchParams({
       grant_type:    "authorization_code",
       code:          code,
@@ -53,29 +91,32 @@ exports.handler = async function(event) {
       code_verifier: verifier
     }).toString();
 
-    const xeroResp = await fetch("https://identity.xero.com/connect/token", {
-      method: "POST",
-      headers: {
+    // Call Xero token endpoint using https module
+    const result = await httpsPost(
+      "identity.xero.com",
+      "/connect/token",
+      {
         "Content-Type":  "application/x-www-form-urlencoded",
         "Authorization": "Basic " + basicAuth
       },
-      body: formBody
-    });
+      formBody
+    );
 
-    const xeroData = await xeroResp.json();
-
-    if (!xeroResp.ok) {
+    if (result.status !== 200) {
       return {
-        statusCode: xeroResp.status, headers,
-        body: JSON.stringify({ error: xeroData.error || "Token exchange failed", detail: xeroData })
+        statusCode: result.status, headers: cors,
+        body: JSON.stringify({ error: "Xero token exchange failed", detail: result.body })
       };
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify(xeroData) };
+    return {
+      statusCode: 200, headers: cors,
+      body: JSON.stringify(result.body)
+    };
 
   } catch(err) {
     return {
-      statusCode: 500, headers,
+      statusCode: 500, headers: cors,
       body: JSON.stringify({ error: err.message })
     };
   }
