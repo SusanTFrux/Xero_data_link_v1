@@ -11,7 +11,7 @@ const APP_URL = "https://sunny-tartufo-d82fdc.netlify.app";
 
 const XERO_AUTH_URL = "https://login.xero.com/identity/connect/authorize";
 const XERO_API      = "https://api.xero.com/api.xro/2.0";
-const XERO_TENANTS  = "https://api.xero.com/connections";
+// All Xero API calls now go through the Netlify proxy (avoids Excel CORS sandbox)
 const SCOPES = [
   "accounting.reports.profitandloss.read",
   "accounting.reports.balancesheet.read",
@@ -286,12 +286,11 @@ async function onAuthMsg(args) {
     saveToken(tok);
     log("✓ Token received.", "ok");
 
-    // Get list of Xero organisations
-    var tenResp = await tryFetch(XERO_TENANTS, {
-      headers: {
-        Authorization: "Bearer " + tok.access_token,
-        Accept: "application/json"
-      }
+    // Get list of Xero organisations via Netlify proxy
+    var tenResp = await tryFetch(APP_URL + "/.netlify/functions/xero", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ endpoint: "connections", token: tok.access_token })
     }, 2);
 
     state.tenants = await tenResp.json();
@@ -334,21 +333,22 @@ function selectOrg() {
 // ── SECTION 7: XERO API CALLS ───────────────────────────────────────────────
 
 async function xeroGet(path, params) {
+  // Routes through Netlify proxy to avoid CORS restrictions in Excel sandbox
   const tok    = getToken();
   const tenant = localStorage.getItem(LS.TID);
   if (!tok || !tenant) throw new Error("Not connected to Xero.");
 
-  let url = XERO_API + "/" + path;
-  if (params) url += "?" + new URLSearchParams(params);
-
-  const resp = await fetch(url, {
-    headers: {
-      Authorization: "Bearer " + tok.access_token,
-      "Xero-Tenant-Id": tenant,
-      Accept: "application/json"
-    }
+  const resp = await fetch(APP_URL + "/.netlify/functions/xero", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: path,
+      token:    tok.access_token,
+      tenantId: tenant,
+      params:   params || null
+    })
   });
-  if (!resp.ok) throw new Error("Xero API " + resp.status + " on " + path);
+  if (!resp.ok) throw new Error("Proxy error " + resp.status + " on " + path);
   return resp.json();
 }
 
