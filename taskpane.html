@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xero P&L Refresher</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ── Header ──────────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="app-header-icon">📊</div>
+    <div>
+      <div class="app-header-title">Xero Data Link</div>
+      <div class="app-header-sub">Pull live data from Xero into Excel</div>
+    </div>
+  </header>
+
+  <!-- ── Step indicator ──────────────────────────────────────── -->
+  <nav class="step-track" id="stepTrack">
+    <div class="step-item active" id="si1"><div class="step-dot" id="sd1">1</div><div class="step-label">Connect</div></div>
+    <div class="step-item" id="si2"><div class="step-dot" id="sd2">2</div><div class="step-label">Report</div></div>
+    <div class="step-item" id="si3"><div class="step-dot" id="sd3">3</div><div class="step-label">Dates</div></div>
+    <div class="step-item" id="si4"><div class="step-dot" id="sd4">4</div><div class="step-label">Fetch</div></div>
+  </nav>
+
+  <!-- ── Main scrollable area ────────────────────────────────── -->
+  <main class="content" id="mainContent">
+
+    <!-- ════ REFRESH PANEL (shown when saved config exists) ════ -->
+    <div class="panel" id="panelRefresh" style="display:none">
+      <div class="card">
+        <div class="card-title">Saved Data Link</div>
+        <div id="refreshSummary" class="refresh-summary"></div>
+        <div id="refreshNewMonth" class="info-banner" style="display:none"></div>
+        <button class="btn btn-primary btn-full" id="btnRefreshNow" onclick="doRefresh()">🔄 Refresh Now</button>
+        <button class="btn btn-subtle btn-full" onclick="showWizard()">✏️ Edit Settings</button>
+      </div>
+    </div>
+
+    <!-- ════ STEP 1: CONNECTION ════ -->
+    <div class="panel" id="panel1">
+
+      <!-- Output location -->
+      <div class="card">
+        <div class="card-title">Output Location</div>
+        <p class="hint">Click a cell in your spreadsheet where data should start, then click the button below.</p>
+        <button class="btn btn-secondary btn-full" onclick="captureSelection()">📍 Capture Current Selection</button>
+        <div id="locationDisplay" class="location-display">No cell selected yet</div>
+      </div>
+
+      <!-- Credentials -->
+      <div class="card" id="cardCreds">
+        <div class="card-title">Xero App Credentials</div>
+        <div class="field">
+          <label class="field-label" for="inputClientId">Client ID</label>
+          <input class="field-input" type="text" id="inputClientId" placeholder="From developer.xero.com" autocomplete="off" spellcheck="false"/>
+        </div>
+        <div class="field">
+          <label class="field-label" for="inputClientSecret">Client Secret</label>
+          <input class="field-input" type="password" id="inputClientSecret" placeholder="From developer.xero.com" autocomplete="off"/>
+        </div>
+        <p class="hint">Get from <a href="https://developer.xero.com" target="_blank">developer.xero.com</a> → My Apps. Saved locally only.</p>
+        <button class="btn btn-subtle btn-sm" onclick="saveCreds()">💾 Save</button>
+      </div>
+
+      <!-- Connection -->
+      <div class="card">
+        <div class="card-title">Connection</div>
+        <div id="connBadge" class="badge badge-neutral">● Not connected</div>
+        <button class="btn btn-xero btn-full" id="btnConnect" onclick="connectXero()">🔗 Connect to Xero</button>
+        <button class="btn btn-danger btn-sm" id="btnDisconnect" onclick="disconnect()" style="display:none">Disconnect</button>
+
+        <!-- Org selector (shown when connected and >1 org) -->
+        <div id="orgSelectorWrap" style="display:none">
+          <label class="field-label" for="selOrg">Organisation</label>
+          <select class="field-select" id="selOrg" onchange="selectOrg()"></select>
+        </div>
+      </div>
+
+      <div class="nav-row">
+        <span></span>
+        <button class="btn btn-primary" id="btnNext1" onclick="goStep(2)" disabled>Next →</button>
+      </div>
+    </div>
+
+    <!-- ════ STEP 2: REPORT SETUP ════ -->
+    <div class="panel" id="panel2" style="display:none">
+
+      <!-- Report type -->
+      <div class="card">
+        <div class="card-title">Report Type</div>
+        <div class="radio-group">
+          <label class="radio-item">
+            <input type="radio" name="reportType" value="ProfitAndLoss" checked onchange="onReportTypeChange()"/>
+            <span class="radio-label">Profit & Loss</span>
+            <span class="radio-hint">Activity during each period</span>
+          </label>
+          <label class="radio-item">
+            <input type="radio" name="reportType" value="BalanceSheet" onchange="onReportTypeChange()"/>
+            <span class="radio-label">Balance Sheet</span>
+            <span class="radio-hint">Balances at end of each period</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Account selector -->
+      <div class="card">
+        <div class="card-title">Accounts</div>
+        <p class="hint">Select the accounts to include as rows in your report.</p>
+        <div id="accountsLoading" class="loading-row">Loading accounts from Xero…</div>
+        <div id="accountsList" class="accounts-list" style="display:none"></div>
+      </div>
+
+      <!-- Tracking category filter -->
+      <div class="card" id="cardTracking" style="display:none">
+        <div class="card-title">Tracking Category Filter <span class="tag-optional">Optional</span></div>
+        <p class="hint">Filter the report by a tracking category (e.g. project, department).</p>
+        <div class="field">
+          <label class="field-label" for="selTrackingCat">Category</label>
+          <select class="field-select" id="selTrackingCat" onchange="onTrackingCatChange()">
+            <option value="">No filter — show all data</option>
+          </select>
+        </div>
+        <div class="field" id="trackingOptionWrap" style="display:none">
+          <label class="field-label" for="selTrackingOpt">Value</label>
+          <select class="field-select" id="selTrackingOpt"></select>
+        </div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-subtle" onclick="goStep(1)">← Back</button>
+        <button class="btn btn-primary" id="btnNext2" onclick="goStep(3)">Next →</button>
+      </div>
+    </div>
+
+    <!-- ════ STEP 3: DATE RANGE ════ -->
+    <div class="panel" id="panel3" style="display:none">
+      <div class="card">
+        <div class="card-title">Date Range</div>
+        <p class="hint">Select the start and end months. One column per month will be created.</p>
+        <div class="date-row">
+          <div class="field" style="flex:1">
+            <label class="field-label" for="selStartMonth">From</label>
+            <select class="field-select" id="selStartMonth" onchange="updateDatePreview()"></select>
+          </div>
+          <div class="field" style="flex:1">
+            <label class="field-label" for="selEndMonth">To</label>
+            <select class="field-select" id="selEndMonth" onchange="updateDatePreview()"></select>
+          </div>
+        </div>
+        <div id="datePreview" class="date-preview"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-subtle" onclick="goStep(2)">← Back</button>
+        <button class="btn btn-primary" onclick="goStep(4)">Next →</button>
+      </div>
+    </div>
+
+    <!-- ════ STEP 4: FETCH & RESULTS ════ -->
+    <div class="panel" id="panel4" style="display:none">
+      <div class="card">
+        <div class="card-title">Review & Fetch</div>
+        <div id="fetchSummary" class="fetch-summary"></div>
+        <button class="btn btn-primary btn-full" id="btnFetch" onclick="doFetch()">🔄 Fetch Data from Xero</button>
+      </div>
+
+      <!-- Progress -->
+      <div class="card" id="cardProgress" style="display:none">
+        <div class="card-title">Progress</div>
+        <div class="progress-wrap">
+          <div class="progress-label" id="progressLabel">Starting…</div>
+          <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+          <div class="progress-sub" id="progressSub"></div>
+        </div>
+      </div>
+
+      <!-- Results -->
+      <div class="card" id="cardResults" style="display:none">
+        <div class="card-title">Results</div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-val" id="statCells">—</div><div class="stat-label">Cells</div></div>
+          <div class="stat"><div class="stat-val" id="statMonths">—</div><div class="stat-label">Months</div></div>
+          <div class="stat"><div class="stat-val" id="statAccounts">—</div><div class="stat-label">Accounts</div></div>
+        </div>
+        <div id="unmatchedList" style="display:none"></div>
+      </div>
+
+      <div class="nav-row">
+        <button class="btn btn-subtle" onclick="goStep(3)">← Back</button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Log ──────────────────────────────────────────────────── -->
+  <div class="log-section">
+    <div class="log-header">
+      <span>Activity Log</span>
+      <button class="btn btn-subtle btn-sm" onclick="clearLog()">Clear</button>
+    </div>
+    <div class="log-area" id="logArea" role="log" aria-live="polite">
+      <div class="log-line">Ready.</div>
+    </div>
+  </div>
+
+  <!-- ── Footer ───────────────────────────────────────────────── -->
+  <footer class="app-footer">
+    <span class="footer-brand">Xero Data Link</span>
+    <span class="badge badge-neutral" style="font-size:10px;padding:1px 6px">v1.0</span>
+  </footer>
+
+  <script src="taskpane.js"></script>
+</body>
+</html>

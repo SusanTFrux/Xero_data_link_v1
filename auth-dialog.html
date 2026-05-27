@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Connecting to Xero…</title>
+  <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 100vh; margin: 0;
+      background: #f5f5f5; color: #242424;
+      text-align: center; padding: 20px;
+    }
+    .box {
+      background: white; border-radius: 8px; padding: 32px 40px;
+      box-shadow: 0 2px 8px rgba(0,0,0,.1); max-width: 380px; width: 100%;
+    }
+    .icon { font-size: 32px; margin-bottom: 12px; }
+    h1 { font-size: 18px; font-weight: 600; color: #0f6cbd; margin-bottom: 8px; }
+    p  { font-size: 13px; color: #616161; line-height: 1.5; }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid #e0e0e0;
+      border-top-color: #0f6cbd; border-radius: 50%;
+      animation: spin 0.8s linear infinite; margin: 16px auto;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="icon" id="icon">🔐</div>
+    <h1 id="title">Connecting to Xero…</h1>
+    <div class="spinner" id="spinner"></div>
+    <p id="message">Please wait while we complete the login.</p>
+  </div>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get("code");
+    const stateP = params.get("state");
+    const error  = params.get("error");
+    const desc   = params.get("error_description");
+
+    function showOk(msg) {
+      document.getElementById("icon").textContent    = "✅";
+      document.getElementById("title").textContent   = "Authorised!";
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("message").textContent = msg;
+    }
+    function showErr(msg) {
+      document.getElementById("icon").textContent    = "❌";
+      document.getElementById("title").textContent   = "Login failed";
+      document.getElementById("spinner").style.display = "none";
+      document.getElementById("message").textContent = msg;
+    }
+
+    Office.onReady(function() {
+      if (error) {
+        showErr(desc || error);
+        Office.context.ui.messageParent(JSON.stringify({ type: "error", message: desc || error }));
+      } else if (code) {
+        showOk("You can return to Excel now.");
+        Office.context.ui.messageParent(JSON.stringify({ type: "code", code: code, state: stateP }));
+      } else {
+        showErr("Unexpected page state. Please try connecting again.");
+        Office.context.ui.messageParent(JSON.stringify({ type: "error", message: "No code received." }));
+      }
+    });
+  </script>
+</body>
+</html>

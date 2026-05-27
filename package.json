@@ -1,0 +1,7 @@
+{
+  "name": "xero-data-link",
+  "version": "1.0.0",
+  "description": "Xero Data Link — Excel add-in for live Xero P&L and Balance Sheet data",
+  "engines": { "node": "18" },
+  "dependencies": {}
+}
