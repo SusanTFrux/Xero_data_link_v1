@@ -13,9 +13,9 @@
   <DisplayName DefaultValue="Xero Data Link"/>
   <Description DefaultValue="Pull live P&amp;L and Balance Sheet data from Xero directly into Excel"/>
 
-  <IconUrl DefaultValue="https://teal-sorbet-db2f7b.netlify.app/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https://teal-sorbet-db2f7b.netlify.app/assets/icon-80.png"/>
-  <SupportUrl DefaultValue="https://teal-sorbet-db2f7b.netlify.app"/>
+  <IconUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-32.png"/>
+  <HighResolutionIconUrl DefaultValue="https:/sunny-tartufo-d82fdc.netlify.app/assets/icon-80.png"/>
+  <SupportUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app"/>
 
   <Hosts>
     <Host Name="Workbook"/>
@@ -28,7 +28,7 @@
   </Requirements>
 
   <DefaultSettings>
-    <SourceLocation DefaultValue="https://teal-sorbet-db2f7b.netlify.app/taskpane.html"/>
+    <SourceLocation DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/taskpane.html"/>
   </DefaultSettings>
 
   <Permissions>ReadWriteDocument</Permissions>
@@ -65,12 +65,12 @@
     </Hosts>
     <Resources>
       <bt:Images>
-        <bt:Image id="Icon16" DefaultValue="https://teal-sorbet-db2f7b.netlify.app/assets/icon-16.png"/>
-        <bt:Image id="Icon32" DefaultValue="https://teal-sorbet-db2f7b.netlify.app/assets/icon-32.png"/>
-        <bt:Image id="Icon80" DefaultValue="https://teal-sorbet-db2f7b.netlify.app/assets/icon-80.png"/>
+        <bt:Image id="Icon16" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-16.png"/>
+        <bt:Image id="Icon32" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-32.png"/>
+        <bt:Image id="Icon80" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-80.png"/>
       </bt:Images>
       <bt:Urls>
-        <bt:Url id="TaskpaneUrl" DefaultValue="https://teal-sorbet-db2f7b.netlify.app/taskpane.html"/>
+        <bt:Url id="TaskpaneUrl" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/taskpane.html"/>
       </bt:Urls>
       <bt:ShortStrings>
         <bt:String id="GroupLabel" DefaultValue="Xero"/>

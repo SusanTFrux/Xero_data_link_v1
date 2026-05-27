@@ -7,7 +7,7 @@
 
 // ── SECTION 1: CONSTANTS & STATE ─────────────────────────────────────────────
 
-const APP_URL = "https://teal-sorbet-db2f7b.netlify.app";
+const APP_URL = "https://sunny-tartufo-d82fdc.netlify.app";
 
 const XERO_AUTH_URL = "https://login.xero.com/identity/connect/authorize";
 const XERO_API      = "https://api.xero.com/api.xro/2.0";
