@@ -14,7 +14,7 @@
   <Description DefaultValue="Pull live P&amp;L and Balance Sheet data from Xero directly into Excel"/>
 
   <IconUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-32.png"/>
-  <HighResolutionIconUrl DefaultValue="https:/sunny-tartufo-d82fdc.netlify.app/assets/icon-80.png"/>
+  <HighResolutionIconUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-80.png"/>
   <SupportUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app"/>
 
   <Hosts>
