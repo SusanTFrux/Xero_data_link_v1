@@ -221,53 +221,103 @@ function resetConnBtn() {
 }
 
 async function onAuthMsg(args) {
-  if (_authDialog) _authDialog.close();
-  resetConnBtn();
-
+  // Parse the message BEFORE closing the dialog
   let msg;
-  try { msg = JSON.parse(args.message); } catch { log("✗ Bad auth response.", "err"); return; }
-  if (msg.type === "error") { log("✗ " + msg.message, "err"); return; }
-  if (msg.type !== "code" || msg.state !== _oauthState) {
-    log("✗ Security check failed.", "err"); return;
+  try {
+    msg = JSON.parse(args.message);
+  } catch(e) {
+    log("✗ Bad auth response: " + e.message, "err");
+    resetConnBtn(); return;
   }
 
-  log("Exchanging code for token…");
+  // Close dialog after parsing message
+  if (_authDialog) { try { _authDialog.close(); } catch(e) {} }
+  resetConnBtn();
+
+  if (msg.type === "error") { log("✗ " + msg.message, "err"); return; }
+  if (msg.type !== "code")  { log("✗ Unexpected type: " + msg.type, "err"); return; }
+  if (msg.state !== _oauthState) { log("✗ Security check failed.", "err"); return; }
+
+  log("Auth code received. Connecting to Xero…");
+
+  // Retry helper — dialog closing can briefly interrupt network
+  async function tryFetch(url, options, retries) {
+    for (var i = 0; i <= retries; i++) {
+      try {
+        return await fetch(url, options);
+      } catch(e) {
+        if (i === retries) throw new Error("Network error after " + (retries+1) + " attempts: " + e.message);
+        log("Network blip — retrying (" + (i+1) + "/" + retries + ")…", "warn");
+        await new Promise(function(r) { setTimeout(r, 1200); });
+      }
+    }
+  }
+
   try {
-    const resp = await fetch(APP_URL + "/.netlify/functions/token", {
-      method: "POST", headers: { "Content-Type": "application/json" },
+    // Exchange auth code for access token via Netlify function
+    var tokenUrl = APP_URL + "/.netlify/functions/token";
+    log("Calling: " + tokenUrl);
+
+    var resp = await tryFetch(tokenUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        code: msg.code, verifier: _pkceVerifier,
+        code:         msg.code,
+        verifier:     _pkceVerifier,
         redirect_uri: APP_URL + "/auth-dialog.html"
       })
-    });
-    if (!resp.ok) throw new Error("Token exchange failed (" + resp.status + ")");
-    const tok = await resp.json();
+    }, 3);
+
+    log("Response: HTTP " + resp.status);
+
+    var respText = await resp.text();
+    var tok;
+    try { tok = JSON.parse(respText); }
+    catch(e) { throw new Error("Non-JSON response: " + respText.substring(0, 200)); }
+
+    if (!resp.ok) {
+      throw new Error("Token exchange failed (" + resp.status + "): " +
+        (tok.error || JSON.stringify(tok)));
+    }
+    if (!tok.access_token) {
+      throw new Error("No access_token in response: " + JSON.stringify(tok));
+    }
+
     saveToken(tok);
+    log("✓ Token received.", "ok");
 
-    // Load tenants
-    const tenResp = await fetch(XERO_TENANTS, {
-      headers: { Authorization: "Bearer " + tok.access_token, Accept: "application/json" }
-    });
+    // Get list of Xero organisations
+    var tenResp = await tryFetch(XERO_TENANTS, {
+      headers: {
+        Authorization: "Bearer " + tok.access_token,
+        Accept: "application/json"
+      }
+    }, 2);
+
     state.tenants = await tenResp.json();
-    if (!state.tenants.length) throw new Error("No Xero organisations found.");
+    if (!state.tenants || !state.tenants.length) {
+      throw new Error("No Xero organisations found for this account.");
+    }
 
-    // Select first tenant
     localStorage.setItem(LS.TID,   state.tenants[0].tenantId);
     localStorage.setItem(LS.TNAME, state.tenants[0].tenantName);
 
-    // Build org selector if multiple
     if (state.tenants.length > 1) {
-      const sel = document.getElementById("selOrg");
-      sel.innerHTML = state.tenants.map(t =>
-        '<option value="' + t.tenantId + '">' + t.tenantName + '</option>'
-      ).join("");
+      var sel = document.getElementById("selOrg");
+      sel.innerHTML = state.tenants.map(function(t) {
+        return '<option value="' + t.tenantId + '">' + t.tenantName + '</option>';
+      }).join("");
     }
 
     log("✓ Connected: " + state.tenants[0].tenantName, "ok");
     updateConnUI();
 
-  } catch(e) { log("✗ " + e.message, "err"); }
+  } catch(e) {
+    log("✗ " + e.message, "err");
+    log("Check: Netlify env vars set? Xero redirect URI correct? Try again.", "warn");
+  }
 }
+
 
 function selectOrg() {
   const sel = document.getElementById("selOrg");
