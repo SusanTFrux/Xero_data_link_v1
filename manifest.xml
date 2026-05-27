@@ -6,16 +6,24 @@
   xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides"
   xsi:type="TaskPaneApp">
 
+  <!-- Unique add-in ID — do not change this once deployed -->
   <Id>b2c3d4e5-f6a7-8901-bcde-fa2345678901</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>Xero Data Link</ProviderName>
-  <DefaultLocale>en-NZ</DefaultLocale>
+  <DefaultLocale>en-US</DefaultLocale>
   <DisplayName DefaultValue="Xero Data Link"/>
   <Description DefaultValue="Pull live P&amp;L and Balance Sheet data from Xero directly into Excel"/>
-
   <IconUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-32.png"/>
   <HighResolutionIconUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-80.png"/>
   <SupportUrl DefaultValue="https://sunny-tartufo-d82fdc.netlify.app"/>
+
+  <!-- AppDomains: all domains the add-in will communicate with -->
+  <AppDomains>
+    <AppDomain>https://sunny-tartufo-d82fdc.netlify.app</AppDomain>
+    <AppDomain>https://login.xero.com</AppDomain>
+    <AppDomain>https://api.xero.com</AppDomain>
+    <AppDomain>https://identity.xero.com</AppDomain>
+  </AppDomains>
 
   <Hosts>
     <Host Name="Workbook"/>
@@ -34,13 +42,30 @@
   <Permissions>ReadWriteDocument</Permissions>
 
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
+
+    <Requirements>
+      <bt:Sets DefaultMinVersion="1.1">
+        <bt:Set Name="ExcelApi" MinVersion="1.7"/>
+      </bt:Sets>
+    </Requirements>
+
     <Hosts>
       <Host xsi:type="Workbook">
         <DesktopFormFactor>
+          <GetStarted>
+            <Title resid="GetStartedTitle"/>
+            <Description resid="GetStartedDesc"/>
+            <LearnMoreUrl resid="LearnMoreUrl"/>
+          </GetStarted>
           <ExtensionPoint xsi:type="PrimaryCommandSurface">
             <OfficeTab id="TabHome">
               <Group id="xdl.group">
                 <Label resid="GroupLabel"/>
+                <Icon>
+                  <bt:Image size="16" resid="Icon16"/>
+                  <bt:Image size="32" resid="Icon32"/>
+                  <bt:Image size="80" resid="Icon80"/>
+                </Icon>
                 <Control xsi:type="Button" id="xdl.fetchBtn">
                   <Label resid="ButtonLabel"/>
                   <Supertip>
@@ -63,6 +88,7 @@
         </DesktopFormFactor>
       </Host>
     </Hosts>
+
     <Resources>
       <bt:Images>
         <bt:Image id="Icon16" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/assets/icon-16.png"/>
@@ -71,14 +97,18 @@
       </bt:Images>
       <bt:Urls>
         <bt:Url id="TaskpaneUrl" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app/taskpane.html"/>
+        <bt:Url id="LearnMoreUrl" DefaultValue="https://sunny-tartufo-d82fdc.netlify.app"/>
       </bt:Urls>
       <bt:ShortStrings>
-        <bt:String id="GroupLabel" DefaultValue="Xero"/>
-        <bt:String id="ButtonLabel" DefaultValue="Xero Data Link"/>
+        <bt:String id="GroupLabel"      DefaultValue="Xero"/>
+        <bt:String id="ButtonLabel"     DefaultValue="Xero Data Link"/>
+        <bt:String id="GetStartedTitle" DefaultValue="Get started with Xero Data Link"/>
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="ButtonTip" DefaultValue="Open the Xero Data Link panel to pull live P&amp;L or Balance Sheet data into this spreadsheet"/>
+        <bt:String id="ButtonTip"    DefaultValue="Open the Xero Data Link panel to pull live P&amp;L or Balance Sheet data into this spreadsheet"/>
+        <bt:String id="GetStartedDesc" DefaultValue="Click the Xero Data Link button in the Home ribbon to get started."/>
       </bt:LongStrings>
     </Resources>
+
   </VersionOverrides>
 </OfficeApp>
