@@ -838,9 +838,7 @@ async function writeToExcel(allData, months) {
         totalCell.format.font.size = 10;
         totalCell.format.fill.color = "#F0F0F0";
         totalCell.format.horizontalAlignment = "Right";
-        totalCell.format.borders.getItem("EdgeBottom").style = "Thin";
       }
-      totalLabel.format.borders.getItem("EdgeBottom").style = "Thin";
 
       groupTotalRows[cls] = currentRow;
       currentRow++;
@@ -871,17 +869,11 @@ async function writeToExcel(allData, months) {
           npCell.format.font.size = 11;
           npCell.format.fill.color = "#D9E2EC";
           npCell.format.horizontalAlignment = "Right";
-          npCell.format.borders.getItem("EdgeBottom").style = "Medium";
-          npCell.format.borders.getItem("EdgeTop").style = "Thin";
         }
-        npLabel.format.borders.getItem("EdgeBottom").style = "Medium";
-        npLabel.format.borders.getItem("EdgeTop").style = "Thin";
       }
     }
 
     // Update org name and timestamp
-    const orgName = localStorage.getItem(LS.TNAME) || "Xero";
-
     await ctx.sync();
     return cellsWritten;
   });
